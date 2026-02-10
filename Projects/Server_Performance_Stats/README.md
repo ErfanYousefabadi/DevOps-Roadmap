@@ -2,6 +2,9 @@
 
 A simple Bash script that prints a snapshot of system resource usage on Linux.
 
+## Project URL
+https://roadmap.sh/projects/server-stats
+
 ## What it shows
 - Total CPU utilization (sampled over 1 second)
 - Memory usage (total / used / free)
