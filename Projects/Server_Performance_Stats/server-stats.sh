@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 cat <<EOF
 ============================================================
@@ -9,7 +9,8 @@ EOF
 echo "CPU"
 echo ------------------------------------------------------------
 echo -n " Total CPU usage:        "
-top -bn 1 | grep '%Cpu' | cut -d ',' -f 4 | awk '{print 100 - $1 " %"}'
+awk '{u=$2+$4; t=$2+$4+$5; if (NR==1){u1=u; t1=t;} else printf "%.1f %%\n", ($2+$4-u1)*100/(t-t1); }' \
+<(grep 'cpu ' /proc/stat) <(sleep 1;grep 'cpu ' /proc/stat)
 echo
 
 echo MEMORY
@@ -38,7 +39,17 @@ TOP PROCESSES BY CPU
  PID     USER        CPU %     MEM %     COMMAND
  -----   ----------  --------  --------  -------------------
 EOF
-top -bn1 -o +%CPU | head -n 12 | tail -n 5 | awk '{printf " %-8d%-12s%-10.1f%-10.1f%s\n", $1, $2, $9, $10, $12}'
+
+PS_OUT_CPU=$(ps auxc --sort=-pcpu)
+PS_OUT_MEM=$(ps auxc --sort=-pmem)
+CPU1=$(echo "$PS_OUT_CPU" | head -n2 | tail -n1 | awk '{print $3}')
+MEM1=$(echo "$PS_OUT_MEM" | head -n2 | tail -n1 | awk '{print $4}')
+
+if [[ $CPU1 = 100 ]]; then
+  echo "$PS_OUT_CPU" | head -n7 | tail -n5 | awk '{printf " %-8d%-12s%-10.1f%-10.1f%s\n", $2, $1, $3, $4, $11}'
+else
+  echo "$PS_OUT_CPU" | head -n6 | tail -n5 | awk '{printf " %-8d%-12s%-10.1f%-10.1f%s\n", $2, $1, $3, $4, $11}'
+fi
 
 cat << EOF
 
@@ -47,7 +58,12 @@ TOP PROCESSES BY MEMORY
  PID     USER        MEM %     CPU %     COMMAND
  -----   ----------  --------  --------  -------------------
 EOF
-top -bn1 -o +%MEM | head -n 12 | tail -n 5 | awk '{printf " %-8d%-12s%-10.1f%-10.1f%s\n", $1, $2, $10, $9, $12}'
+
+if [[ $MEM1 = 100 ]]; then
+  echo "$PS_OUT_MEM" | head -n7 | tail -n5 | awk '{printf " %-8d%-12s%-10.1f%-10.1f%s\n", $2, $1, $4, $3, $11}'
+else
+  echo "$PS_OUT_MEM" | head -n6 | tail -n5 | awk '{printf " %-8d%-12s%-10.1f%-10.1f%s\n", $2, $1, $4, $3, $11}'
+fi
 
 echo
 echo ============================================================
