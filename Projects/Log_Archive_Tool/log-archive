@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Archive a log directory into a timestamped .tar.gz with basic CLI flags.
 
 verbose=false
 output_dir="./archives"
@@ -52,6 +53,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# Remaining arg must be the log directory.
 if [[ -z $1 ]]; then
   printf "log-archive: missing log_dir\n" >&2
   try_help
