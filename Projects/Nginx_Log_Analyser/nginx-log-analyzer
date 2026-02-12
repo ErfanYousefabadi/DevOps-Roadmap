@@ -1,5 +1,23 @@
 #!/usr/bin/env bash
 
+# Nginx access log analyzer
+# 
+# Reads a standard Nginx access log (combined format assumed) and prints:
+# - Top 5 client IPs by request count
+# - Top 5 requested paths
+# - Top 5 response status codes
+# - Top 5 user agents
+#
+# Usage:
+#   ./nginx-log-analyzer /path/to/access.log
+# 
+# Notes:
+# - Expects a standard Nginx "combined" access log. Example shape:
+#   $remote_addr - $remote_user [$time_local] "$request" $status $body_bytes_sent \
+#   "$http_referer" "$http_user_agent"
+# - The request line is in quotes, and the user agent is the 6th quoted field.
+# - Uses common Unix tools: awk, cut, sort, uniq, head.
+
 require_tools() {
   local missing=0
   for tool in awk cut sort uniq head; do
@@ -12,13 +30,14 @@ require_tools() {
 }
 
 LOG=$1
-# 1.IP address 
-# 2.Date and time 
-# 3.Request method and path 
-# 4.Response status code 
-# 5.Response size 
-# 6.Referrer 
-# 7.User agent
+# Log fields (combined format):
+# 1. IP address
+# 2. Date and time
+# 3. Request method and path
+# 4. Response status code
+# 5. Response size
+# 6. Referrer
+# 7. User agent
 
 if [[ -z "$LOG" ]] ; then
   echo "Error: log file path is required. Usage: ./nginx-log-analyzer /path/to/access.log" >&2
@@ -48,6 +67,7 @@ EOF
 
 echo "Top 5 IP addresses with the most requests:"
 
+# Field 1 is the client IP.
 cut -d ' ' -f1 "$LOG" | sort | uniq -c | sort -rn | head -n5 \
   | awk '{printf "%d. %s - %d requests\n", ((++i)), $2, $1}'
 
@@ -58,6 +78,7 @@ cat << EOF
 Top 5 most requested paths:
 EOF
 
+# Field 7 is the request path in the standard combined format.
 cut -d ' ' -f7 "$LOG" | sort | uniq -c | sort -rn | head -n5 \
   | awk '{printf "%d. %s - %d requests\n", ((++i)), $2, $1}'
 
@@ -69,6 +90,7 @@ cat << EOF
 Top 5 response status codes:
 EOF
 
+# Status is the first token after the request in the quoted section.
 cut -d '"' -f3 "$LOG" | cut -d ' ' -f2 | sort | uniq -c | sort -rn | head -n5 \
   | awk '{printf "%d. %d - %d requests\n", ((++i)), $2, $1}'
 
@@ -79,6 +101,7 @@ cat << EOF
 Top 5 user agents:
 EOF
 
+# User agent is the 6th quoted field in combined logs.
 cut -d '"' -f6 "$LOG" | sort | uniq -c | sort -rn | head -n5 \
   | awk '{
       count=$1;
