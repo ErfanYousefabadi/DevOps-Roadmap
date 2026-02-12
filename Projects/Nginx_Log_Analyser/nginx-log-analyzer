@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+
+require_tools() {
+  local missing=0
+  for tool in awk cut sort uniq head; do
+    if ! command -v "$tool" >/dev/null 2>&1; then
+      echo "Error: missing required tool: $tool" >&2
+      missing=1
+    fi
+  done
+  return "$missing"
+}
+
+LOG=$1
+# 1.IP address 
+# 2.Date and time 
+# 3.Request method and path 
+# 4.Response status code 
+# 5.Response size 
+# 6.Referrer 
+# 7.User agent
+
+if [[ -z "$LOG" ]] ; then
+  echo "Error: log file path is required. Usage: ./nginx-log-analyzer /path/to/access.log" >&2
+  exit 1
+elif [[ -d "$LOG" ]] ; then
+  echo "Error: path is a directory, not a file: $LOG" >&2
+  exit 1
+elif ! [[ -e "$LOG" ]] ; then
+  echo "Error: log file not found: $LOG" >&2
+  exit 1
+elif ! [[ -r "$LOG" ]] ; then
+  echo "Error: log file is not readable: $LOG" >&2
+  exit 1
+elif ! [[ -s "$LOG" ]] ; then
+  echo "Error: log file is empty: $LOG" >&2
+  exit 1
+fi
+
+require_tools || exit 1
+
+cat << EOF
+==================================================
+NGINX ACCESS LOG ANALYSIS
+==================================================
+
+EOF
+
+echo "Top 5 IP addresses with the most requests:"
+
+cut -d ' ' -f1 "$LOG" | sort | uniq -c | sort -rn | head -n5 \
+  | awk '{printf "%d. %s - %d requests\n", ((++i)), $2, $1}'
+
+cat << EOF
+
+--------------------------------------------------
+
+Top 5 most requested paths:
+EOF
+
+cut -d ' ' -f7 "$LOG" | sort | uniq -c | sort -rn | head -n5 \
+  | awk '{printf "%d. %s - %d requests\n", ((++i)), $2, $1}'
+
+
+cat << EOF
+
+--------------------------------------------------
+
+Top 5 response status codes:
+EOF
+
+cut -d '"' -f3 "$LOG" | cut -d ' ' -f2 | sort | uniq -c | sort -rn | head -n5 \
+  | awk '{printf "%d. %d - %d requests\n", ((++i)), $2, $1}'
+
+cat << EOF
+
+--------------------------------------------------
+
+Top 5 user agents:
+EOF
+
+cut -d '"' -f6 "$LOG" | sort | uniq -c | sort -rn | head -n5 \
+  | awk '{
+      count=$1;
+      $1 = "";
+      ua=substr($0, 2);
+      printf "%d. %s - %s requests\n", ((++i)), ua, count
+    }'
